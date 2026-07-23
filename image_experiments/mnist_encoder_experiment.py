@@ -1,6 +1,9 @@
 #%%
 import matplotlib.pyplot as plt
 import torch
+
+torch.set_num_threads(1)  # avoids severe thread-contention slowdowns on this machine
+
 from sklearn.decomposition import PCA
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
