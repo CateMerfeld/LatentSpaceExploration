@@ -1,4 +1,6 @@
 #%%
+import os
+
 import matplotlib.pyplot as plt
 import torch
 
@@ -11,11 +13,14 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from data_preprocessing import load_mnist_digits
 
+SCRATCH_DIR = "/tmp/claude-1003/-home-cmdunham-LatentSpaceExploration/b0fd6c9e-b2c2-4b5c-aca0-8208883a223e/scratchpad"
+EMBEDDINGS_PATH = f"{SCRATCH_DIR}/mnist_6_8_embeddings.pt"
+
 DIGITS = (6, 8)
 MISLABEL_FRAC = 0.2
 VAL_FRAC = 0.15
 SEED = 42
-EPOCHS = 30
+EPOCHS = 500
 BATCH_SIZE = 64
 LEARNING_RATE = 1e-3
 HIDDEN_DIM = 128
@@ -123,8 +128,67 @@ with torch.no_grad():
     train_encoded = model(train["images"])
     test_encoded = model(test["images"])
 
+os.makedirs(SCRATCH_DIR, exist_ok=True)
+torch.save(
+    {
+        "run_id": run.id,
+        "digits": DIGITS,
+        "train_encoded": train_encoded,
+        "train_true_labels": train["true_labels"],
+        "train_assigned_labels": train["assigned_labels"],
+        "train_is_mislabeled": train["is_mislabeled"],
+        "test_encoded": test_encoded,
+        "test_true_labels": test["true_labels"],
+    },
+    EMBEDDINGS_PATH,
+)
+print(f"saved encoder outputs to {EMBEDDINGS_PATH}")
 
-def plot_pca(encoded, targets, true_labels, is_mislabeled, title, ax):
+
+def classify(encoded, true_labels):
+    """Predicts each sample's digit as whichever of the two relevant one-hot
+    dims scores higher (the other 8 output dims are never a training target,
+    so a full 10-way argmax isn't meaningful here). Returns per-digit stats
+    (this is *not* logged to W&B, only used for the report and plot titles)."""
+    digit_indices = torch.tensor(DIGITS)
+    predicted = digit_indices[encoded[:, digit_indices].argmax(dim=1)]
+    correct = predicted == true_labels
+
+    stats = {}
+    for digit in DIGITS:
+        mask = true_labels == digit
+        n = mask.sum().item()
+        n_correct = correct[mask].sum().item()
+        stats[digit] = {
+            "n": n,
+            "n_correct": n_correct,
+            "n_incorrect": n - n_correct,
+            "pct_correct": 100 * n_correct / n,
+            "pct_incorrect": 100 * (n - n_correct) / n,
+        }
+    return predicted, correct, stats
+
+
+train_predicted, train_correct, train_stats = classify(train_encoded, train["true_labels"])
+test_predicted, test_correct, test_stats = classify(test_encoded, test["true_labels"])
+
+for split_name, correct, stats in [("train", train_correct, train_stats), ("test", test_correct, test_stats)]:
+    print(f"\n{split_name} set classification (encoder output argmax over the 2 relevant dims):")
+    for digit in DIGITS:
+        s = stats[digit]
+        print(f"  digit {digit}: {s['n_correct']}/{s['n']} correct ({s['pct_correct']:.2f}%), "
+              f"{s['n_incorrect']}/{s['n']} incorrect ({s['pct_incorrect']:.2f}%)")
+    print(f"  overall: {correct.float().mean().item():.2%}")
+
+
+def format_stats(stats):
+    return "  |  ".join(
+        f"digit {digit}: {s['pct_correct']:.2f}% correct / {s['pct_incorrect']:.2f}% incorrect"
+        for digit, s in stats.items()
+    )
+
+
+def plot_pca(encoded, targets, true_labels, is_mislabeled, title, stats, ax):
     pca = PCA(n_components=2)
     stacked = torch.cat([encoded, targets], dim=0).numpy()
     pca.fit(stacked)
@@ -134,6 +198,9 @@ def plot_pca(encoded, targets, true_labels, is_mislabeled, title, ax):
 
     true_labels = true_labels.numpy()
     is_mislabeled = is_mislabeled.numpy()
+    # The digit each one-hot target vector actually encodes -- may differ from
+    # true_labels for mislabeled samples, and is what determines star position.
+    assigned_labels = targets.argmax(dim=1).numpy()
 
     for digit, color in COLORS.items():
         digit_mask = true_labels == digit
@@ -152,14 +219,19 @@ def plot_pca(encoded, targets, true_labels, is_mislabeled, title, ax):
                 label=f"encoder output, digit {digit} (mislabeled)",
             )
 
-        target_digit_2d = targets_2d[digit_mask]
-        ax.scatter(
-            target_digit_2d[:, 0], target_digit_2d[:, 1],
-            marker="*", s=250, color=color, edgecolors="black", linewidths=0.5,
-            label=f"one-hot target, digit {digit}",
-        )
+        # All targets assigned to this digit are the same one-hot vector, so a
+        # single representative star is enough (and avoids draw-order overlap
+        # between digits' stars hiding one another).
+        target_mask = assigned_labels == digit
+        if target_mask.any():
+            target_point = targets_2d[target_mask][:1]
+            ax.scatter(
+                target_point[:, 0], target_point[:, 1],
+                marker="*", s=250, color=color, edgecolors="black", linewidths=0.5,
+                zorder=3, label=f"one-hot target, digit {digit}",
+            )
 
-    ax.set_title(title)
+    ax.set_title(f"{title}\n{format_stats(stats)}", fontsize=10)
     ax.set_xlabel("PC1")
     ax.set_ylabel("PC2")
 
@@ -167,11 +239,11 @@ def plot_pca(encoded, targets, true_labels, is_mislabeled, title, ax):
 fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 plot_pca(
     train_encoded, train["targets"], train["true_labels"], train["is_mislabeled"],
-    "Train: encoder output vs. one-hot target (PCA)", axes[0],
+    "Train: encoder output vs. one-hot target (PCA)", train_stats, axes[0],
 )
 plot_pca(
     test_encoded, test["targets"], test["true_labels"], test["is_mislabeled"],
-    "Test: encoder output vs. one-hot target (PCA)", axes[1],
+    "Test: encoder output vs. one-hot target (PCA)", test_stats, axes[1],
 )
 
 handles, labels = axes[0].get_legend_handles_labels()
