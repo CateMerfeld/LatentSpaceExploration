@@ -1,0 +1,137 @@
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /home/cmdunham/.netrc.
+wandb: Currently logged in as: catemerfeld to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.28.1
+wandb: Run data is saved locally in /home/cmdunham/LatentSpaceExploration/image_experiments/wandb/run-20260811_195430-j0vkveuq
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run dainty-darkness-10
+wandb: ⭐️ View project at https://wandb.ai/catemerfeld/mnist-6-8-encoder
+wandb: 🚀 View run at https://wandb.ai/catemerfeld/mnist-6-8-encoder/runs/j0vkveuq
+wandb: updating run metadata
+wandb: uploading history steps 460-500, summary, console lines 93-112
+wandb: 
+wandb: Run history:
+wandb: train_mse ██▇▇▆▂▁▁▁▁▁▁▁▄▂▃▁▁▁▁▁▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:   val_mse ▁▂▅▇▆▆▇█▇▇▇▇▇▇▇█▆█▇▇▇▆█▆▇▇▆▇▇▇▇▇▇▇█▇▆▆▆▇
+wandb: 
+wandb: Run summary:
+wandb:  test_mse 0.02894
+wandb: train_mse 0.00256
+wandb:   val_mse 0.02892
+wandb: 
+wandb: 🚀 View run dainty-darkness-10 at: https://wandb.ai/catemerfeld/mnist-6-8-encoder/runs/j0vkveuq
+wandb: ⭐️ View project at: https://wandb.ai/catemerfeld/mnist-6-8-encoder
+wandb: Synced 6 W&B file(s), 1 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260811_195430-j0vkveuq/logs
+epoch   1  train_mse=0.0483  val_mse=0.0108
+epoch   5  train_mse=0.0326  val_mse=0.0121
+epoch  10  train_mse=0.0313  val_mse=0.0110
+epoch  15  train_mse=0.0299  val_mse=0.0102
+epoch  20  train_mse=0.0283  val_mse=0.0134
+epoch  25  train_mse=0.0264  val_mse=0.0131
+epoch  30  train_mse=0.0236  val_mse=0.0143
+epoch  35  train_mse=0.0202  val_mse=0.0137
+epoch  40  train_mse=0.0171  val_mse=0.0118
+epoch  45  train_mse=0.0139  val_mse=0.0158
+epoch  50  train_mse=0.0105  val_mse=0.0312
+epoch  55  train_mse=0.0088  val_mse=0.0187
+epoch  60  train_mse=0.0075  val_mse=0.0233
+epoch  65  train_mse=0.0065  val_mse=0.0248
+epoch  70  train_mse=0.0060  val_mse=0.0222
+epoch  75  train_mse=0.0061  val_mse=0.0300
+epoch  80  train_mse=0.0046  val_mse=0.0241
+epoch  85  train_mse=0.0041  val_mse=0.0252
+epoch  90  train_mse=0.0047  val_mse=0.0267
+epoch  95  train_mse=0.0037  val_mse=0.0225
+epoch 100  train_mse=0.0041  val_mse=0.0279
+epoch 105  train_mse=0.0036  val_mse=0.0307
+epoch 110  train_mse=0.0045  val_mse=0.0312
+epoch 115  train_mse=0.0035  val_mse=0.0296
+epoch 120  train_mse=0.0048  val_mse=0.0288
+epoch 125  train_mse=0.0042  val_mse=0.0306
+epoch 130  train_mse=0.0037  val_mse=0.0314
+epoch 135  train_mse=0.0039  val_mse=0.0233
+epoch 140  train_mse=0.0041  val_mse=0.0337
+epoch 145  train_mse=0.0033  val_mse=0.0300
+epoch 150  train_mse=0.0038  val_mse=0.0292
+epoch 155  train_mse=0.0027  val_mse=0.0289
+epoch 160  train_mse=0.0026  val_mse=0.0276
+epoch 165  train_mse=0.0026  val_mse=0.0276
+epoch 170  train_mse=0.0026  val_mse=0.0274
+epoch 175  train_mse=0.0312  val_mse=0.0203
+epoch 180  train_mse=0.0036  val_mse=0.0270
+epoch 185  train_mse=0.0027  val_mse=0.0255
+epoch 190  train_mse=0.0062  val_mse=0.0318
+epoch 195  train_mse=0.0031  val_mse=0.0289
+epoch 200  train_mse=0.0026  val_mse=0.0280
+epoch 205  train_mse=0.0026  val_mse=0.0281
+epoch 210  train_mse=0.0057  val_mse=0.0289
+epoch 215  train_mse=0.0031  val_mse=0.0317
+epoch 220  train_mse=0.0035  val_mse=0.0274
+epoch 225  train_mse=0.0028  val_mse=0.0274
+epoch 230  train_mse=0.0028  val_mse=0.0271
+epoch 235  train_mse=0.0033  val_mse=0.0340
+epoch 240  train_mse=0.0037  val_mse=0.0364
+epoch 245  train_mse=0.0025  val_mse=0.0305
+epoch 250  train_mse=0.0025  val_mse=0.0284
+epoch 255  train_mse=0.0025  val_mse=0.0282
+epoch 260  train_mse=0.0170  val_mse=0.0348
+epoch 265  train_mse=0.0028  val_mse=0.0291
+epoch 270  train_mse=0.0025  val_mse=0.0290
+epoch 275  train_mse=0.0025  val_mse=0.0291
+epoch 280  train_mse=0.0025  val_mse=0.0291
+epoch 285  train_mse=0.0025  val_mse=0.0294
+epoch 290  train_mse=0.0035  val_mse=0.0321
+epoch 295  train_mse=0.0026  val_mse=0.0276
+epoch 300  train_mse=0.0025  val_mse=0.0275
+epoch 305  train_mse=0.0025  val_mse=0.0275
+epoch 310  train_mse=0.0025  val_mse=0.0272
+epoch 315  train_mse=0.0025  val_mse=0.0275
+epoch 320  train_mse=0.0025  val_mse=0.0272
+epoch 325  train_mse=0.0025  val_mse=0.0273
+epoch 330  train_mse=0.0025  val_mse=0.0273
+epoch 335  train_mse=0.0192  val_mse=0.0239
+epoch 340  train_mse=0.0030  val_mse=0.0313
+epoch 345  train_mse=0.0028  val_mse=0.0319
+epoch 350  train_mse=0.0025  val_mse=0.0283
+epoch 355  train_mse=0.0025  val_mse=0.0283
+epoch 360  train_mse=0.0025  val_mse=0.0281
+epoch 365  train_mse=0.0025  val_mse=0.0280
+epoch 370  train_mse=0.0025  val_mse=0.0279
+epoch 375  train_mse=0.0025  val_mse=0.0281
+epoch 380  train_mse=0.0025  val_mse=0.0279
+epoch 385  train_mse=0.0025  val_mse=0.0279
+epoch 390  train_mse=0.0025  val_mse=0.0280
+epoch 395  train_mse=0.0105  val_mse=0.0257
+epoch 400  train_mse=0.0027  val_mse=0.0321
+epoch 405  train_mse=0.0026  val_mse=0.0270
+epoch 410  train_mse=0.0030  val_mse=0.0332
+epoch 415  train_mse=0.0028  val_mse=0.0316
+epoch 420  train_mse=0.0028  val_mse=0.0228
+epoch 425  train_mse=0.0026  val_mse=0.0285
+epoch 430  train_mse=0.0031  val_mse=0.0372
+epoch 435  train_mse=0.0028  val_mse=0.0333
+epoch 440  train_mse=0.0027  val_mse=0.0297
+epoch 445  train_mse=0.0027  val_mse=0.0309
+epoch 450  train_mse=0.0030  val_mse=0.0269
+epoch 455  train_mse=0.0043  val_mse=0.0266
+epoch 460  train_mse=0.0026  val_mse=0.0275
+epoch 465  train_mse=0.0031  val_mse=0.0287
+epoch 470  train_mse=0.0025  val_mse=0.0286
+epoch 475  train_mse=0.0032  val_mse=0.0296
+epoch 480  train_mse=0.0031  val_mse=0.0305
+epoch 485  train_mse=0.0030  val_mse=0.0328
+epoch 490  train_mse=0.0027  val_mse=0.0252
+epoch 495  train_mse=0.0027  val_mse=0.0308
+epoch 500  train_mse=0.0026  val_mse=0.0289
+final test_mse=0.0289
+saved encoder outputs to /tmp/claude-1003/-home-cmdunham-LatentSpaceExploration/b0fd6c9e-b2c2-4b5c-aca0-8208883a223e/scratchpad/mnist_6_8_embeddings.pt
+
+train set classification (encoder output argmax over the 2 relevant dims):
+  digit 6: 4087/5025 correct (81.33%), 938/5025 incorrect (18.67%)
+  digit 8: 4053/4979 correct (81.40%), 926/4979 incorrect (18.60%)
+  overall: 81.37%
+
+test set classification (encoder output argmax over the 2 relevant dims):
+  digit 6: 800/958 correct (83.51%), 158/958 incorrect (16.49%)
+  digit 8: 822/974 correct (84.39%), 152/974 incorrect (15.61%)
+  overall: 83.95%

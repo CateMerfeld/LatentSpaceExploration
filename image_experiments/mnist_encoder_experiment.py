@@ -27,6 +27,8 @@ HIDDEN_DIM = 128
 
 COLORS = {DIGITS[0]: "#1f77b4", DIGITS[1]: "#d62728"}
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class Encoder(nn.Module):
     def __init__(self, input_dim=784, hidden_dim=128, output_dim=10):
@@ -44,6 +46,21 @@ class Encoder(nn.Module):
         return self.net(x)
 
 
+def clean_labels(split):
+    """Overrides assigned_labels/targets/is_mislabeled with the true, uncorrupted
+    one-hot targets -- used to give val clean labels even though it's drawn from
+    the (20%-mislabeled) train set."""
+    n = split["true_labels"].shape[0]
+    targets = torch.zeros(n, 10)
+    targets[torch.arange(n), split["true_labels"]] = 1.0
+    return {
+        **split,
+        "assigned_labels": split["true_labels"].clone(),
+        "targets": targets,
+        "is_mislabeled": torch.zeros(n, dtype=torch.bool),
+    }
+
+
 def split_train_val(train_data, val_frac, seed):
     n = train_data["images"].shape[0]
     generator = torch.Generator().manual_seed(seed)
@@ -51,7 +68,7 @@ def split_train_val(train_data, val_frac, seed):
     n_val = int(round(n * val_frac))
     val_idx, train_idx = perm[:n_val], perm[n_val:]
     subset = lambda idx: {k: v[idx] for k, v in train_data.items()}
-    return subset(train_idx), subset(val_idx)
+    return subset(train_idx), clean_labels(subset(val_idx))
 
 
 #%%
@@ -66,9 +83,12 @@ train_loader = DataLoader(
     shuffle=True,
 )
 
-model = Encoder(hidden_dim=HIDDEN_DIM)
+model = Encoder(hidden_dim=HIDDEN_DIM).to(DEVICE)
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 loss_fn = nn.MSELoss()
+
+val_images, val_targets = val["images"].to(DEVICE), val["targets"].to(DEVICE)
+test_images, test_targets = test["images"].to(DEVICE), test["targets"].to(DEVICE)
 
 n_params = sum(p.numel() for p in model.parameters())
 
@@ -91,6 +111,7 @@ run = wandb.init(
         "n_val": val["images"].shape[0],
         "n_test": test["images"].shape[0],
         "n_params": n_params,
+        "device": str(DEVICE),
     },
 )
 wandb.watch(model, log="all", log_freq=len(train_loader))
@@ -100,6 +121,7 @@ for epoch in range(1, EPOCHS + 1):
     model.train()
     epoch_loss = 0.0
     for images, targets in train_loader:
+        images, targets = images.to(DEVICE), targets.to(DEVICE)
         optimizer.zero_grad()
         preds = model(images)
         loss = loss_fn(preds, targets)
@@ -110,8 +132,8 @@ for epoch in range(1, EPOCHS + 1):
 
     model.eval()
     with torch.no_grad():
-        val_loss = loss_fn(model(val["images"]), val["targets"]).item()
-    wandb.log({"epoch": epoch, "train_mse": epoch_loss, "val_mse": val_loss})
+        val_loss = loss_fn(model(val_images), val_targets).item()
+    wandb.log({"train_mse": epoch_loss, "val_mse": val_loss})
 
     if epoch % 5 == 0 or epoch == 1:
         print(f"epoch {epoch:3d}  train_mse={epoch_loss:.4f}  val_mse={val_loss:.4f}")
@@ -120,13 +142,13 @@ for epoch in range(1, EPOCHS + 1):
 #%%
 model.eval()
 with torch.no_grad():
-    test_loss = loss_fn(model(test["images"]), test["targets"]).item()
+    test_loss = loss_fn(model(test_images), test_targets).item()
 print(f"final test_mse={test_loss:.4f}")
 run.summary["test_mse"] = test_loss
 
 with torch.no_grad():
-    train_encoded = model(train["images"])
-    test_encoded = model(test["images"])
+    train_encoded = model(train["images"].to(DEVICE)).cpu()
+    test_encoded = model(test_images).cpu()
 
 os.makedirs(SCRATCH_DIR, exist_ok=True)
 torch.save(
@@ -231,9 +253,13 @@ def plot_pca(encoded, targets, true_labels, is_mislabeled, title, stats, ax):
                 zorder=3, label=f"one-hot target, digit {digit}",
             )
 
-    ax.set_title(f"{title}\n{format_stats(stats)}", fontsize=10)
-    ax.set_xlabel("PC1")
-    ax.set_ylabel("PC2")
+    ax.set_title(title, fontsize=18, pad=28)
+    ax.text(0.5, 1.02, format_stats(stats), transform=ax.transAxes,
+            ha="center", va="bottom", fontsize=13)
+    ax.set_xlabel("PC1", fontsize=16)
+    ax.set_ylabel("PC2", fontsize=16)
+    ax.set_xticks([])
+    ax.set_yticks([])
 
 
 fig, axes = plt.subplots(1, 2, figsize=(14, 6))
@@ -247,7 +273,7 @@ plot_pca(
 )
 
 handles, labels = axes[0].get_legend_handles_labels()
-fig.legend(handles, labels, loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.08))
+fig.legend(handles, labels, loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.08), fontsize=13)
 fig.tight_layout()
 fig.savefig("pca_plots.png", dpi=150, bbox_inches="tight")
 wandb.log({"pca_plots": wandb.Image(fig)})

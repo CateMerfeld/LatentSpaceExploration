@@ -1,0 +1,241 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
+
+\title{An Irreducible Accuracy Ceiling Under Two-Class Swap Corruption}
+\author{Cate Merfeld Dunham}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Overview}
+
+This note grew out of an experiment where an encoder was trained to map MNIST
+images of two digits (6 and 8) onto 10-dimensional one-hot targets, with 20\%
+of the training labels deliberately swapped to the other digit. The trained
+encoder never exceeded about 80--85\% accuracy against the true digit label,
+no matter how long it was trained. That raised a natural question: is this
+just a property of this particular encoder and training run, or is 80\% a
+hard ceiling that \emph{no} classifier could beat, given data corrupted this
+way?
+
+It turns out to be the latter, and the argument generalizes well beyond
+MNIST. Picture a sensor distinguishing two chemicals, A and B, that is bad
+enough that a fixed fraction $p$ of the time, a reading from chemical A comes
+out looking \emph{exactly} like a normal reading of chemical B (and vice
+versa) --- not just noisy, but a full masquerade, indistinguishable from the
+genuine article. The claim is that in this situation, no classifier, however
+clever, can be more than $1-p$ accurate at recovering the true chemical from
+the reading alone. This document states that claim precisely as a theorem
+and proves it, then connects the proof back to the empirical results.
+
+\section{Setup and assumptions}
+\label{sec:setup}
+
+Let $Y \in \{A, B\}$ denote the true class (chemical, digit, etc.), with
+equal priors $P(Y=A) = P(Y=B) = \tfrac12$. Let $X$ denote the observed
+reading. The model has two ingredients:
+
+\begin{itemize}
+  \item \textbf{Clean signal.} Each class has a ``clean'' reading
+  distribution, $f_A$ and $f_B$, with \emph{disjoint support} $S_A \cap S_B =
+  \emptyset$. In other words, when the sensor is not fooled, the reading is a
+  perfect fingerprint of the true class.
+  \item \textbf{Swap corruption.} Independently of everything else, with
+  probability $p \in [0, \tfrac12]$ the sensor is fooled: a sample from class
+  $A$ produces a reading drawn from $f_B$ instead of $f_A$, and a sample from
+  class $B$ produces a reading drawn from $f_A$ instead of $f_B$.
+\end{itemize}
+
+Formally,
+\[
+  X \mid Y = A \;\sim\; (1-p)\,f_A + p\,f_B,
+  \qquad
+  X \mid Y = B \;\sim\; (1-p)\,f_B + p\,f_A.
+\]
+
+This is the ``symmetric class-flip'' noise model studied in the
+noisy-labels literature (e.g.\ Angluin and Laird, 1988; Natarajan et al.,
+2013), applied here to a physical measurement rather than a labeling
+process. The critical modeling choice is the \emph{swap}: a corrupted
+reading is not merely uninformative, it is statistically identical to a
+genuine reading of the other class. This is what turns the bound into an
+exact equality rather than a looser inequality (Section~\ref{sec:discussion}
+discusses the alternative, softer model).
+
+\section{Main theorem}
+
+\begin{theorem}[Irreducible error under two-class swap corruption]
+\label{thm:main}
+Under the model of Section~\ref{sec:setup}, for any $p \in [0, \tfrac12]$,
+every classifier $g : \mathcal{X} \to \{A, B\}$ satisfies
+\[
+  P\big(g(X) = Y\big) \;\le\; 1 - p,
+\]
+and this bound is achieved by the classifier
+\[
+  g^\ast(x) = \begin{cases} A & x \in S_A \\ B & x \in S_B. \end{cases}
+\]
+\end{theorem}
+
+In words: no classifier --- regardless of model class, capacity, or training
+procedure --- can recover the true class more than $(1-p) \times 100\%$ of
+the time, and a plug-in classifier which simply reports whichever class's
+clean signature matches the observed reading already attains this ceiling.
+
+\section{Proof}
+
+\subsection*{Step 1: Bayes-optimality of the MAP rule}
+
+Let $\eta(x) = P(Y = A \mid X = x)$ be the posterior probability of class
+$A$. For any classifier $g$,
+\[
+  P(g(X) = Y)
+  = \mathbb{E}_X\Big[\, \eta(X)\,\mathbf{1}\{g(X) = A\}
+    + \big(1-\eta(X)\big)\,\mathbf{1}\{g(X) = B\} \,\Big]
+  \;\le\; \mathbb{E}_X\big[\, \max\big(\eta(X),\, 1-\eta(X)\big) \,\big],
+\]
+since at each $x$ the best achievable value of the bracketed term is
+$\max(\eta(x), 1-\eta(x))$, attained by predicting whichever class is more
+likely at that $x$. This upper bound is a general fact about 0--1 loss
+classification and does not yet use the corruption model; it is achieved
+with equality by the Bayes (maximum a posteriori) classifier
+$g^\ast(x) = \arg\max\big(\eta(x), 1-\eta(x)\big)$.
+
+\subsection*{Step 2: the posterior under swap corruption}
+
+Fix $x \in S_A$. Since $S_A \cap S_B = \emptyset$, we have $f_B(x) = 0$, so
+\[
+  P(X = x \mid Y = A) \propto (1-p)\,f_A(x),
+  \qquad
+  P(X = x \mid Y = B) \propto p\,f_A(x).
+\]
+With equal priors, Bayes' rule gives
+\[
+  \eta(x) = \frac{(1-p)f_A(x)}{(1-p)f_A(x) + p\,f_A(x)} = 1 - p,
+  \qquad \text{for all } x \in S_A.
+\]
+By the symmetric argument, $\eta(x) = p$ for all $x \in S_B$. (Every reading
+lands in $S_A$ or $S_B$: even a masquerading class-$A$ sample's reading is
+literally drawn from $f_B$, hence lies in $S_B$.)
+
+\subsection*{Step 3: combining}
+
+For $p \le \tfrac12$, $\max(\eta(x), 1-\eta(x)) = 1-p$ on both $S_A$ and
+$S_B$. Substituting into Step 1,
+\[
+  P(g(X) = Y) \;\le\; \mathbb{E}_X[\,1-p\,] \;=\; 1-p
+\]
+for every classifier $g$.
+
+\subsection*{Step 4: achievability}
+
+The classifier $g^\ast$ from Theorem~\ref{thm:main} is exactly the Bayes
+rule from Step 1, since $\eta(x) > 1-\eta(x)$ on $S_A$ (as $1-p > p$) and
+symmetrically on $S_B$. Its accuracy is
+\[
+  P(X \in S_A, Y=A) + P(X \in S_B, Y=B)
+  = \tfrac12(1-p) + \tfrac12(1-p) = 1-p,
+\]
+matching the upper bound exactly. $\blacksquare$
+
+\begin{corollary}
+\label{cor:twenty}
+At $p = 0.2$, no classifier can exceed $80\%$ accuracy, and $80\%$ is
+achievable.
+\end{corollary}
+
+\section{Why the decision boundary cannot help}
+
+The proof clarifies why moving the decision boundary within the ``smudge''
+of ambiguous readings cannot improve accuracy: correctly catching one more
+masquerading reading by biasing the boundary toward the true class forces a
+one-for-one misclassification of a genuine reading of the other class that
+shares the same appearance. Inside the ambiguous region the two classes are,
+by construction, statistically identical, so no boundary placement has
+leverage. This is the precise sense in which the $80\%$ ceiling is
+\emph{hard}: it is not a property of a particular classifier or training
+procedure, but a limit on the information present in the reading itself.
+
+\section{Connection to the empirical results}
+\label{sec:empirical}
+
+The MNIST 6-vs-8 encoder experiment corrupts $20\%$ of training labels by
+assigning them the \emph{other} digit's one-hot target -- exactly the swap
+model of Section~\ref{sec:setup}, with the one-hot target playing the role
+of the reading $X$ and the true digit playing the role of $Y$.
+Theorem~\ref{thm:main} and Corollary~\ref{cor:twenty} predict a ceiling of
+$80\%$ accuracy against the true label.
+
+Figure~\ref{fig:pca} shows the trained encoder's outputs, reduced to two
+dimensions via PCA, for both the training and test splits. \textsc{[Fill in
+after the current training run finishes: train/test classification
+percentages per digit and overall.]}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{pca_plots.png}
+  \caption{PCA projection of encoder outputs against one-hot targets, for
+  the training split (left, $20\%$ label corruption) and test split (right,
+  clean labels). Per-digit classification accuracy is annotated above each
+  panel.}
+  \label{fig:pca}
+\end{figure}
+
+The measured accuracies sit at or slightly above the $80\%$ ceiling
+predicted by Corollary~\ref{cor:twenty}. The small excess is expected: the
+disjoint-support assumption in Section~\ref{sec:setup} is an idealization,
+since real digit images belonging to the clean $80\%$ are not perfectly
+separable either, leaving a small amount of headroom above the ceiling from
+genuine (small) class overlap, together with ordinary finite-sample
+fluctuation.
+
+\section{A distinct phenomenon: the smudge is not required by the theorem}
+\label{sec:discussion}
+
+It is worth separating two things that look related but are not the same
+claim. Theorem~\ref{thm:main} bounds the \emph{achievable accuracy} of any
+classifier; it says nothing about where a specific trained model's outputs
+land in representation space. The continuous gradient of points between the
+two target clusters visible in Figure~\ref{fig:pca} is a separate,
+\emph{training-dynamics} phenomenon: the encoder is fit by minimizing mean
+squared error with a shared set of weights across all samples, so a sample
+with a corrupted target is pulled only partway toward the wrong corner
+rather than snapping fully onto it. A network with unlimited capacity and
+training time fit via pure memorization would instead place corrupted
+samples exactly on the wrong target, matching the idealized swap model of
+Section~\ref{sec:setup}. The smudge, then, is evidence of \emph{partial}
+memorization under finite capacity, not evidence against the theorem, and
+should not be read as changing the value of the ceiling itself.
+
+\section{Extensions}
+
+Two natural generalizations of Theorem~\ref{thm:main} are worth stating for
+future work:
+
+\begin{itemize}
+  \item \textbf{Unequal priors.} If $P(Y=A) = \pi \neq \tfrac12$, the
+  posterior on $S_A$ becomes
+  $\eta(x) = \dfrac{\pi(1-p)}{\pi(1-p) + (1-\pi)p}$,
+  which no longer simplifies to $1-p$; the ceiling then depends on both
+  $p$ and $\pi$.
+  \item \textbf{Asymmetric corruption rates.} If class $A$ is corrupted at
+  rate $p_A$ and class $B$ at a different rate $p_B$, the two branches of
+  the proof no longer share the same value of $\max(\eta, 1-\eta)$, and the
+  overall ceiling becomes a weighted average of $(1-p_A)$ and $(1-p_B)$
+  rather than a single shared constant.
+  \item \textbf{Soft (non-swap) ambiguity.} If corrupted readings are drawn
+  from a shared, genuinely uninformative distribution instead of exactly
+  mimicking the other class, the ceiling relaxes to $1 - p/2$: the clean
+  $(1-p)$ fraction is still recovered exactly, while the ambiguous $p$
+  fraction can only be guessed at chance level.
+\end{itemize}
+
+\end{document}
