@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from data_preprocessing import load_mnist_digits
 
-SCRATCH_DIR = "/tmp/claude-1003/-home-cmdunham-LatentSpaceExploration/b0fd6c9e-b2c2-4b5c-aca0-8208883a223e/scratchpad"
+SCRATCH_DIR = "/home/cmdunham/scratch/latent_space_exploration"
 EMBEDDINGS_PATH = f"{SCRATCH_DIR}/mnist_6_8_embeddings.pt"
 
 DIGITS = (6, 8)
@@ -74,7 +74,7 @@ def split_train_val(train_data, val_frac, seed):
 #%%
 torch.manual_seed(SEED)
 data = load_mnist_digits(digits=DIGITS, mislabel_frac=MISLABEL_FRAC, seed=SEED)
-full_train, test = data["train"], data["test"]
+full_train, test, test_flipped = data["train"], data["test"], data["test_flipped"]
 train, val = split_train_val(full_train, VAL_FRAC, SEED)
 
 train_loader = DataLoader(
@@ -161,6 +161,8 @@ torch.save(
         "train_is_mislabeled": train["is_mislabeled"],
         "test_encoded": test_encoded,
         "test_true_labels": test["true_labels"],
+        "test_flipped_assigned_labels": test_flipped["assigned_labels"],
+        "test_flipped_is_mislabeled": test_flipped["is_mislabeled"],
     },
     EMBEDDINGS_PATH,
 )
@@ -201,6 +203,24 @@ for split_name, correct, stats in [("train", train_correct, train_stats), ("test
         print(f"  digit {digit}: {s['n_correct']}/{s['n']} correct ({s['pct_correct']:.2f}%), "
               f"{s['n_incorrect']}/{s['n']} incorrect ({s['pct_incorrect']:.2f}%)")
     print(f"  overall: {correct.float().mean().item():.2%}")
+
+# Flipped-label test evaluation: same test images, same corruption process as
+# training. Matches the "unreliable sensor" scenario (test data is as ambiguous
+# as train data), so the theory's ceilings apply to these numbers.
+assert torch.equal(test["images"], test_flipped["images"])
+flip_rate = test_flipped["is_mislabeled"].float().mean().item()
+test_flipped_mse = loss_fn(test_encoded, test_flipped["targets"]).item()
+test_flipped_floor_mse = 2 * flip_rate * (1 - flip_rate) / test_encoded.shape[1]
+_, test_flipped_correct, test_flipped_stats = classify(test_encoded, test_flipped["assigned_labels"])
+print(f"\nflipped-label test set (flip rate {flip_rate:.2%}):")
+print(f"  test_mse against flipped targets = {test_flipped_mse:.4f} "
+      f"(floor if every reading had p(x)=1-flip_rate: {test_flipped_floor_mse:.4f})")
+for digit in DIGITS:
+    s = test_flipped_stats[digit]
+    print(f"  flipped label {digit}: {s['n_correct']}/{s['n']} agree ({s['pct_correct']:.2f}%)")
+print(f"  accuracy against flipped labels: {test_flipped_correct.float().mean().item():.2%} "
+      f"(ceiling from Theorem 1: {1 - flip_rate:.2%})")
+run.summary["test_mse_flipped"] = test_flipped_mse
 
 
 def format_stats(stats):

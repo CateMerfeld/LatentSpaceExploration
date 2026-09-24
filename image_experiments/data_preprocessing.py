@@ -12,9 +12,11 @@ def load_mnist_digits(digits=(6, 8), mislabel_frac=0.2, seed=42, data_root=DATA_
 
     In the train split, `mislabel_frac` of each digit's samples get their
     target flipped to the *other* digit's one-hot vector (the image itself
-    is untouched). The test split always uses clean/true one-hot targets.
+    is untouched). The "test" split always uses clean/true one-hot targets.
+    "test_flipped" holds the same test images with the same corruption
+    process applied (drawn after "train", so the train split is unaffected).
 
-    Returns a dict with, for each of "train"/"test":
+    Returns a dict with, for each of "train"/"test"/"test_flipped":
       images: (N, 784) float tensor in [0, 1]
       true_labels: (N,) long tensor, true digit value
       assigned_labels: (N,) long tensor, digit value the target one-hot encodes
@@ -69,6 +71,7 @@ def load_mnist_digits(digits=(6, 8), mislabel_frac=0.2, seed=42, data_root=DATA_
     return {
         "train": make_split(train_images, train_labels, mislabel=True),
         "test": make_split(test_images, test_labels, mislabel=False),
+        "test_flipped": make_split(test_images, test_labels, mislabel=True),
     }
 
 

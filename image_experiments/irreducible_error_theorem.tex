@@ -15,16 +15,19 @@
 \begin{document}
 \maketitle
 
-\section*{Overview}
+\subsection*{Overview}
 
 This note grew out of an experiment where an encoder was trained to map MNIST
 images of two digits (6 and 8) onto 10-dimensional one-hot targets, with 20\%
-of the training labels deliberately swapped to the other digit. The trained
-encoder never exceeded about 80--85\% accuracy against the true digit label,
-no matter how long it was trained. That raised a natural question: is this
-just a property of this particular encoder and training run, or is 80\% a
-hard ceiling that \emph{no} classifier could beat, given data corrupted this
-way?
+of the training labels deliberately swapped to the other digit. On held-out
+test images -- never seen during training, and clean of label corruption --
+the trained encoder never exceeded about 80--85\% accuracy against the true
+digit label, no matter how long it was trained. That raised a natural
+question: is this just a property of this particular encoder and training
+run, or is 80\% a hard ceiling that \emph{no} classifier could beat at test
+time, given training data corrupted this way? (Training-set accuracy is a
+different quantity, discussed separately below, since a model can simply
+memorize individual training examples.)
 
 It turns out to be the latter, and the argument generalizes well beyond
 MNIST. Picture a sensor distinguishing two chemicals, A and B, that is bad
@@ -36,7 +39,7 @@ clever, can be more than $1-p$ accurate at recovering the true chemical from
 the reading alone. This document states that claim precisely as a theorem
 and proves it, then connects the proof back to the empirical results.
 
-\section{Setup and assumptions}
+\subsection{Setup and assumptions}
 \label{sec:setup}
 
 Let $Y \in \{A, B\}$ denote the true class (chemical, digit, etc.), with
@@ -70,7 +73,7 @@ genuine reading of the other class. This is what turns the bound into an
 exact equality rather than a looser inequality (Section~\ref{sec:discussion}
 discusses the alternative, softer model).
 
-\section{Main theorem}
+\subsection{Main theorem}
 
 \begin{theorem}[Irreducible error under two-class swap corruption]
 \label{thm:main}
@@ -90,9 +93,27 @@ procedure --- can recover the true class more than $(1-p) \times 100\%$ of
 the time, and a plug-in classifier which simply reports whichever class's
 clean signature matches the observed reading already attains this ceiling.
 
-\section{Proof}
+\begin{quote}
+\textbf{Scope: this is a test-time (generalization) bound.} The probability
+$P(g(X)=Y)$ in Theorem~\ref{thm:main} is a population quantity: it is the
+accuracy of $g$ on a \emph{fresh} draw of $(X,Y)$ from the corruption model,
+not the accuracy $g$ achieves on whatever finite sample was used to fit it.
+The two can differ. A classifier with enough capacity can memorize the
+identity of each individual training example and simply look up its known
+true label, which trivially reproduces $100\%$ accuracy on the training set
+regardless of $p$ --- this is not a violation of the theorem, because a
+lookup keyed on ``which specific training example is this'' uses
+information beyond the reading's distribution, which the theorem's argument
+assumes is unavailable. On a genuinely new reading (i.e.\ at test time, or
+for any sample not seen during fitting), that side channel does not exist,
+and the $1-p$ ceiling applies in full force. Section~\ref{sec:empirical}
+therefore checks the theorem's prediction against \emph{test}-set accuracy
+specifically, not training-set accuracy.
+\end{quote}
 
-\subsection*{Step 1: Bayes-optimality of the MAP rule}
+\subsection{Proof}
+
+\subsubsection*{Step 1: Bayes-optimality of the MAP rule}
 
 Let $\eta(x) = P(Y = A \mid X = x)$ be the posterior probability of class
 $A$. For any classifier $g$,
@@ -109,7 +130,7 @@ classification and does not yet use the corruption model; it is achieved
 with equality by the Bayes (maximum a posteriori) classifier
 $g^\ast(x) = \arg\max\big(\eta(x), 1-\eta(x)\big)$.
 
-\subsection*{Step 2: the posterior under swap corruption}
+\subsubsection*{Step 2: the posterior under swap corruption}
 
 Fix $x \in S_A$. Since $S_A \cap S_B = \emptyset$, we have $f_B(x) = 0$, so
 \[
@@ -126,7 +147,7 @@ By the symmetric argument, $\eta(x) = p$ for all $x \in S_B$. (Every reading
 lands in $S_A$ or $S_B$: even a masquerading class-$A$ sample's reading is
 literally drawn from $f_B$, hence lies in $S_B$.)
 
-\subsection*{Step 3: combining}
+\subsubsection*{Step 3: combining}
 
 For $p \le \tfrac12$, $\max(\eta(x), 1-\eta(x)) = 1-p$ on both $S_A$ and
 $S_B$. Substituting into Step 1,
@@ -135,7 +156,7 @@ $S_B$. Substituting into Step 1,
 \]
 for every classifier $g$.
 
-\subsection*{Step 4: achievability}
+\subsubsection*{Step 4: achievability}
 
 The classifier $g^\ast$ from Theorem~\ref{thm:main} is exactly the Bayes
 rule from Step 1, since $\eta(x) > 1-\eta(x)$ on $S_A$ (as $1-p > p$) and
@@ -152,7 +173,7 @@ At $p = 0.2$, no classifier can exceed $80\%$ accuracy, and $80\%$ is
 achievable.
 \end{corollary}
 
-\section{Why the decision boundary cannot help}
+\subsection{Why the decision boundary cannot help}
 
 The proof clarifies why moving the decision boundary within the ``smudge''
 of ambiguous readings cannot improve accuracy: correctly catching one more
@@ -164,7 +185,7 @@ leverage. This is the precise sense in which the $80\%$ ceiling is
 \emph{hard}: it is not a property of a particular classifier or training
 procedure, but a limit on the information present in the reading itself.
 
-\section{Connection to the empirical results}
+\subsection{Connection to the empirical results}
 \label{sec:empirical}
 
 The MNIST 6-vs-8 encoder experiment corrupts $20\%$ of training labels by
@@ -172,50 +193,161 @@ assigning them the \emph{other} digit's one-hot target -- exactly the swap
 model of Section~\ref{sec:setup}, with the one-hot target playing the role
 of the reading $X$ and the true digit playing the role of $Y$.
 Theorem~\ref{thm:main} and Corollary~\ref{cor:twenty} predict a ceiling of
-$80\%$ accuracy against the true label.
+$80\%$ accuracy at test time. As noted above, this is specifically a
+statement about \textbf{test-set} accuracy: the test images are never seen
+during training and their labels are never corrupted, so the encoder cannot
+have memorized anything sample-specific about them, and its output on them
+must depend only on the (possibly ambiguous) information genuinely present
+in the reading -- exactly the regime the theorem describes. Training-set
+accuracy against the true label is a different, unbounded quantity, since
+the encoder's parameters were fit directly on those same samples and could
+in principle memorize each one's true digit individually, regardless of
+what corrupted target its loss term used.
 
 Figure~\ref{fig:pca} shows the trained encoder's outputs, reduced to two
-dimensions via PCA, for both the training and test splits. \textsc{[Fill in
-after the current training run finishes: train/test classification
-percentages per digit and overall.]}
+dimensions via PCA, for both splits; the test panel (right) is the one the
+theorem constrains. On the test split, the trained encoder reaches $84.13\%$
+accuracy on digit 6 and $84.80\%$ on digit 8, for an overall test accuracy
+of $84.47\%$ -- consistent with (and slightly above) the $80\%$ ceiling from
+Corollary~\ref{cor:twenty}. For reference, training-set accuracy is
+$81.39\%$ on digit 6 and $81.66\%$ on digit 8 ($81.53\%$ overall); as
+discussed above, this quantity is not constrained by Theorem~\ref{thm:main}.
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=\textwidth]{pca_plots.png}
   \caption{PCA projection of encoder outputs against one-hot targets, for
-  the training split (left, $20\%$ label corruption) and test split (right,
-  clean labels). Per-digit classification accuracy is annotated above each
-  panel.}
+  the training split (left, $20\%$ label corruption, not bounded by
+  Theorem~\ref{thm:main}) and test split (right, clean labels, the split
+  the theorem constrains). Per-digit classification accuracy is annotated
+  above each panel.}
   \label{fig:pca}
 \end{figure}
 
-The measured accuracies sit at or slightly above the $80\%$ ceiling
-predicted by Corollary~\ref{cor:twenty}. The small excess is expected: the
-disjoint-support assumption in Section~\ref{sec:setup} is an idealization,
-since real digit images belonging to the clean $80\%$ are not perfectly
-separable either, leaving a small amount of headroom above the ceiling from
-genuine (small) class overlap, together with ordinary finite-sample
-fluctuation.
+The measured \emph{test} accuracy sits at or slightly above the $80\%$
+ceiling predicted by Corollary~\ref{cor:twenty}. The small excess is
+expected: the disjoint-support assumption in Section~\ref{sec:setup} is an
+idealization, since real digit images belonging to the clean $80\%$ are not
+perfectly separable either, leaving a small amount of headroom above the
+ceiling from genuine (small) class overlap, together with ordinary
+finite-sample fluctuation.
 
-\section{A distinct phenomenon: the smudge is not required by the theorem}
+\subsection{The smudge on held-out data}
 \label{sec:discussion}
 
-It is worth separating two things that look related but are not the same
-claim. Theorem~\ref{thm:main} bounds the \emph{achievable accuracy} of any
-classifier; it says nothing about where a specific trained model's outputs
-land in representation space. The continuous gradient of points between the
-two target clusters visible in Figure~\ref{fig:pca} is a separate,
-\emph{training-dynamics} phenomenon: the encoder is fit by minimizing mean
-squared error with a shared set of weights across all samples, so a sample
-with a corrupted target is pulled only partway toward the wrong corner
-rather than snapping fully onto it. A network with unlimited capacity and
-training time fit via pure memorization would instead place corrupted
-samples exactly on the wrong target, matching the idealized swap model of
-Section~\ref{sec:setup}. The smudge, then, is evidence of \emph{partial}
-memorization under finite capacity, not evidence against the theorem, and
-should not be read as changing the value of the ceiling itself.
+Theorem~\ref{thm:main} bounds the accuracy of a \emph{decision}, a choice
+between two classes. The continuous gradient of points between the two target
+clusters in Figure~\ref{fig:pca} concerns a different object: the
+continuous-valued output of an encoder trained to minimize squared error
+against one-hot targets. A second result addresses that object.
 
-\section{Extensions}
+Let $X$ be the reading, taking values in a space $\mathcal{X}$, jointly
+distributed with a random target $T$.
+
+\begin{theorem}[Optimal squared-error prediction]
+\label{thm:l2}
+Let $T$ be a random vector taking one of two values, $e_A$ or $e_B$
+($e_A, e_B \in \mathbb{R}^n$), with $P(T=e_A \mid X=x)=p(x)$ and
+$P(T=e_B \mid X=x) = 1-p(x)$. Then, over all measurable
+$f: \mathcal{X} \to \mathbb{R}^n$, the expected squared distance between
+$f(X)$ and $T$, $\mathbb{E}\big[\|f(X) - T\|^2\big]$, is minimized (a.e.\
+uniquely) by:
+\begin{equation}
+    f^*(x) = \mathbb{E}[T\mid X=x] = p(x)\,e_A + (1-p(x))\,e_B.
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+\textbf{Step 1: a single reading.} Fix a reading $x$, and let
+$v \in \mathbb{R}^n$ be a candidate output at that reading, that is, any
+vector a predictor could output there. Given $X=x$, the target equals $e_A$ with probability $p(x)$ and $e_B$ with
+probability $1-p(x)$, so
+\[
+  \mathbb{E}\big[\|v-T\|^2 \mid X=x\big]
+  = p(x)\,\|v-e_A\|^2 + (1-p(x))\,\|v-e_B\|^2 .
+\]
+Expanding each term with $\|v-e\|^2 = \|v\|^2 - 2\,v\cdot e + \|e\|^2$ gives
+\[
+  \|v\|^2 - 2\,v\cdot f^*(x) + p(x)\|e_A\|^2 + (1-p(x))\|e_B\|^2 .
+\]
+Since $\|v-f^*(x)\|^2 = \|v\|^2 - 2\,v\cdot f^*(x) + \|f^*(x)\|^2$, this equals
+\[
+  \mathbb{E}\big[\|v-T\|^2 \mid X=x\big] = \|v-f^*(x)\|^2 + c(x),
+\]
+where
+\[
+  c(x) := p(x)\|e_A\|^2 + (1-p(x))\|e_B\|^2 - \|f^*(x)\|^2
+        = p(x)\,(1-p(x))\,\|e_A-e_B\|^2
+\]
+does not depend on $v$. In particular, at the reading $x$ the output
+$v=f^*(x)$ is the unique minimizer of the expected squared error, and the
+smallest value attained is $c(x)$.
+
+\textbf{Step 2: all readings.} Let $f$ be measurable. Since $f(X)$ is a
+function of $X$, Step~1 applies with $v = f(X)$, giving
+\[
+  \mathbb{E}\big[\|f(X)-T\|^2 \mid X\big] = \|f(X)-f^*(X)\|^2 + c(X).
+\]
+Taking expectations and using the law of total expectation,
+\[
+  \mathbb{E}\big[\|f(X)-T\|^2\big]
+  = \mathbb{E}\big[\|f(X)-f^*(X)\|^2\big] + \mathbb{E}\big[c(X)\big].
+\]
+Applying this to $f=f^*$ shows $\mathbb{E}[c(X)] = \mathbb{E}\big[\|f^*(X)-T\|^2\big]$,
+which is finite because $c(x) \le \tfrac14\|e_A-e_B\|^2$. Hence
+\begin{equation}
+  \mathbb{E}\big[\|f(X)-T\|^2\big]
+  = \mathbb{E}\big[\|f^*(X)-T\|^2\big] + \mathbb{E}\big[\|f(X)-f^*(X)\|^2\big],
+  \label{eq:decomp}
+\end{equation}
+as an identity in $[0,\infty]$. Because
+$\mathbb{E}\big[\|f(X)-f^*(X)\|^2\big] \ge 0$, no $f$ can do better than
+$f^*$. If $f$ attains the minimum, then
+$\mathbb{E}\big[\|f(X)-f^*(X)\|^2\big] = 0$, and a nonnegative random variable
+with zero mean is zero almost surely, so $f(X)=f^*(X)$ almost surely.
+\end{proof}
+
+\begin{corollary}[The smudge]
+\label{cor:smudge}
+At every reading $x$ with $0<p(x)<1$, the optimal output $f^*(x)$ lies
+strictly between $e_A$ and $e_B$ on the segment joining them. Any measurable
+$f$ with $P\big(f(X)\neq f^*(X)\big) > 0$, in particular any $f$ that outputs
+$e_A$ or $e_B$ on a set of readings of positive probability where
+$0<p(x)<1$, satisfies
+\[
+  \mathbb{E}\big[\|f(X)-T\|^2\big] > \mathbb{E}\big[\|f^*(X)-T\|^2\big].
+\]
+\end{corollary}
+
+\begin{proof}
+For $0<p(x)<1$, $f^*(x)$ is a convex combination of $e_A$ and $e_B$ with both
+weights strictly positive, hence lies in the open segment and equals neither
+endpoint. If $f(X)\neq f^*(X)$ with positive probability, then
+$\|f(X)-f^*(X)\|^2 > 0$ on that event, so
+$\mathbb{E}\big[\|f(X)-f^*(X)\|^2\big] > 0$, and the strict inequality follows
+from~\eqref{eq:decomp}.
+\end{proof}
+
+Both statements are expectations over the data distribution, so they describe
+error on \emph{new} samples, not on the finite sample used for fitting. This
+matters for interpretation. On the training set, a network with enough
+capacity can memorize each sample's target and avoid any smudge; that does
+not contradict the result, because a training-set average is not the
+population expectation. On held-out data, the smudge is not an artifact of
+imperfect training: wherever the readings are genuinely ambiguous, it is what
+optimal performance requires, and a model that avoids it is measurably worse.
+
+Two limits on this claim should be kept in view. The result does not say that
+every trained network smudges; it says smudging is required to be optimal, and
+that departures from it cost a computable amount. And it forces a smudge only
+at readings whose class is genuinely uncertain under the held-out
+distribution. When the held-out labels are clean, as in the test set used
+here, ambiguity comes only from images that are truly hard to tell apart, not
+from the label corruption applied during training. The smudge is unrelated to
+the value of the accuracy ceiling in Theorem~\ref{thm:main}, which is
+unchanged.
+
+\subsection{Extensions}
 
 Two natural generalizations of Theorem~\ref{thm:main} are worth stating for
 future work:

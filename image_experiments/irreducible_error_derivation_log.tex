@@ -1,0 +1,570 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{hyperref}
+
+\newtheorem*{takeaway}{Takeaway}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
+\newtheorem{proposition}{Proposition}
+
+\title{Building the Irreducible-Error Theorem: A Guided Derivation}
+\author{Cate Merfeld Dunham}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Overview}
+
+This is a running log of a self-guided derivation exercise: working out, from
+first principles and via guided questions rather than being handed the
+answer, why a sensor that sometimes produces fully ambiguous readings caps
+the best possible classification accuracy at a fixed ceiling. It is a
+companion to, and independent re-derivation of, the result already written
+up formally in the theorem note in this directory. This log is updated as
+the exercise progresses, so it may contain open questions not yet resolved
+at any given point.
+
+\section{Warm-up: reasoning about a single reading}
+
+\textbf{Setup considered.} Suppose you receive a single sensor reading, and
+you are told that, given this specific reading, there is a 70\% chance the
+true chemical is A and a 30\% chance it is B. You must guess A or B for this
+one reading.
+
+\textbf{Question asked.} Which would you guess, what is your probability of
+being right, and can any strategy do better?
+
+\textbf{Answer given.} Guess A, since 70\% is better than 30\%. No strategy
+can beat the 70\% probability of being right.
+
+\begin{takeaway}
+For a single reading with known posterior chance $q$ of being class A, the
+best possible probability of guessing correctly is $\max(q, 1-q)$, achieved
+by guessing whichever class is more likely. No strategy can beat this for
+that one reading.
+\end{takeaway}
+
+\section{Generalizing to a formula}
+
+\textbf{Definition introduced.} For a general reading value $x$, let
+\[
+  p(x) = P(Y = A \mid X = x)
+\]
+be the probability that the true class of a sample is $A$, given that the
+observed reading was $x$. (Confirmed explicitly: $Y$ is the true class label
+and $X$ is the observed reading -- different kinds of objects, so
+expressions like ``$X=Y$'' do not make sense; $p(x)$ is the conditional
+probability $P(Y=A\mid X=x)$.)
+
+\textbf{Question asked.} Generalizing the warm-up, write an expression for
+the best possible accuracy at reading $x$, in terms of $p(x)$.
+
+\textbf{Answer given.}
+\[
+  \max\big(p(x),\, 1-p(x)\big)
+\]
+
+\begin{takeaway}
+The best possible accuracy at any single reading $x$ is $\max(p(x), 1-p(x))$.
+\end{takeaway}
+
+\section{Combining across all readings}
+
+\textbf{Toy example (first version).} Readings take one of two appearances,
+$x_1$ or $x_2$, each occurring 50\% of the time; best accuracy at $x_1$ is
+90\%, at $x_2$ is 60\%. Question: out of 100 readings, how many correct
+guesses overall, and what fraction?
+
+Working through this example surfaced two important clarifications:
+
+\begin{itemize}
+  \item The accuracy numbers at $x_1$ and at $x_2$ are independent of each
+  other -- each comes from its own pair of complementary probabilities
+  ($p(x_1)$ and $1-p(x_1)$ sum to 1; separately, $p(x_2)$ and $1-p(x_2)$ sum
+  to 1), but there is no required relationship between the $x_1$ pair and
+  the $x_2$ pair.
+  \item How often each reading \emph{appearance} occurs ($P(X=x_1)$,
+  $P(X=x_2)$) is a different quantity from the overall prior on the true
+  class ($P(Y=A)$, $P(Y=B)$), and the two need not match.
+\end{itemize}
+
+\textbf{Toy example (consistency-checked version).} Requiring $P(Y=A) =
+P(Y=B) = 50\%$ constrains how the reading-appearance frequencies and the
+per-reading posteriors can relate. One consistent instance: $P(X=x_1) =
+0.2$, $P(X=x_2) = 0.8$, $p(x_1) = 0.9$, $p(x_2) = 0.4$, which averages back
+out to $P(Y=A) = 0.2(0.9) + 0.8(0.4) = 0.5$ as required, giving the same
+90\%/60\% accuracy pair as before but now on consistent footing.
+
+\textbf{Further constraint added.} Additionally requiring $P(X=x_1) =
+P(X=x_2) = 50\%$ forces
+\[
+  0.5\,p(x_1) + 0.5\,p(x_2) = 0.5 \quad\Longrightarrow\quad p(x_2) = 1 - p(x_1),
+\]
+i.e.\ the two per-reading posteriors become complements of each other. With
+$p(x_1) = 0.9$, this forces $p(x_2) = 0.1$, and the best accuracy at $x_2$
+becomes $\max(0.1, 0.9) = 90\%$ -- equal to the accuracy at $x_1$, rather
+than a different value.
+
+\textbf{Question asked.} Under this symmetric version (both readings equally
+likely, both with 90\% best accuracy), what is the overall expected
+accuracy out of 100 readings?
+
+\textbf{Answer given.}
+\[
+  0.9 \times 0.5 + 0.9 \times 0.5 = 0.9 \quad (90\%)
+\]
+
+\begin{takeaway}
+When equal priors ($P(Y=A)=P(Y=B)$) are combined with equal
+reading-appearance frequencies, the per-reading posteriors are forced to be
+complements of one another, which forces the best-possible accuracy to be
+\emph{the same} at every reading appearance. In that case the overall
+accuracy equals that common value regardless of how the reading-appearance
+weights are distributed. This symmetry is expected to matter for the real
+(sensor) problem.
+\end{takeaway}
+
+\textbf{Terminology introduced.} The operation of combining a per-reading
+quantity across all possible readings, weighted by how likely each reading
+is, is called the \emph{expected value} (or \emph{expectation}), written
+$E_X[\cdot]$. The computation above is an instance of
+\[
+  E_X\big[\max(p(X), 1-p(X))\big].
+\]
+
+\section{The general inequality (Bayes-optimality bound)}
+
+\textbf{Question asked.} Using the per-reading fact from
+Section~2 (no strategy beats $\max(p(x),1-p(x))$ at a given $x$), write the
+relationship between $P(g(X)=Y)$, for an arbitrary classifier $g$, and
+$E_X[\max(p(X), 1-p(X))]$.
+
+\textbf{Answer given.}
+\[
+  P(g(X) = Y) \;\le\; E_X\big[\max(p(X), 1-p(X))\big]
+\]
+
+\begin{takeaway}
+For \emph{any} classifier $g$ (any function from readings to a predicted
+class), its overall accuracy cannot exceed
+$E_X[\max(p(X), 1-p(X))]$. This holds regardless of the corruption/ambiguity
+model chosen -- it is a general fact about binary classification with a
+known posterior $p(x) = P(Y=A\mid X=x)$.
+\end{takeaway}
+
+\section{Why the inequality holds}
+
+\textbf{Sub-question asked.} At a specific reading $x$, if $g(x) = A$, what
+is $P(\text{correct} \mid X=x)$ in terms of $p(x)$? What if $g(x) = B$
+instead?
+
+\textbf{Answer worked out.} If $g(x)=A$, the guess is correct exactly when
+the true class really is $A$, so $P(\text{correct}\mid X=x) = P(Y=A\mid
+X=x) = p(x)$. If $g(x) = B$, correctness requires the true class to be $B$,
+so $P(\text{correct}\mid X=x) = 1-p(x)$. Either way, this per-reading
+correctness probability is one of $\{p(x), 1-p(x)\}$, both of which are
+$\le \max(p(x), 1-p(x))$ by definition.
+
+\textbf{General averaging principle established.} Using a simpler warm-up
+(if every number in a list is at most 10, the average of the list is at
+most 10): if every term being averaged is bounded above by some ceiling
+(possibly a different ceiling for each term), the average of the terms is
+bounded above by the average of the ceilings.
+
+\textbf{Combining.} The overall accuracy $P(g(X)=Y)$ is exactly the
+expectation, over all readings, of the per-reading correctness probability:
+\[
+  P(g(X)=Y) = E_X\big[P(\text{correct}\mid X)\big].
+\]
+Since each term $P(\text{correct}\mid X=x) \le \max(p(x), 1-p(x))$, the
+averaging principle gives
+\[
+  P(g(X)=Y) \;\le\; E_X\big[\max(p(X), 1-p(X))\big],
+\]
+which is exactly the inequality from Section~4 -- now understood as a
+consequence of (a) a hard per-reading ceiling and (b) overall accuracy being
+an average across readings.
+
+\section{Achievability: the Bayes classifier}
+
+\textbf{Question asked.} At reading $x$, $g(x)$ only has two possible
+choices ($A$ or $B$), giving correctness probability $p(x)$ or $1-p(x)$
+respectively. Is there always a choice matching $\max(p(x),1-p(x))$
+exactly? Is anything stopping that choice from being made independently at
+every $x$, as one single function $g$?
+
+\textbf{Answer given.} Yes, there is always a choice that makes the
+correctness probability equal to the ceiling; no, nothing prevents making
+that choice independently at each reading.
+
+\textbf{Explicit rule constructed.}
+\[
+  g^\ast(x) = \begin{cases} A & \text{if } p(x) \ge 1-p(x) \\ B & \text{otherwise.} \end{cases}
+\]
+(Here $g$, unstarred, denotes an arbitrary classifier -- the inequality
+above holds for every such $g$ -- while $g^\ast$ denotes this specific,
+deliberately constructed classifier.)
+
+\textbf{Edge case checked.} At a reading where $p(x) = 1-p(x) = 0.5$ (a
+tie), $\max(p(x),1-p(x)) = 0.5$ regardless of which class is guessed, so it
+does not matter which branch a tie falls into; the $\ge$ in the rule above
+resolves ties arbitrarily (into the $A$ branch) without affecting whether
+the ceiling is met.
+
+\section{The bound is tight}
+
+\textbf{Question asked.} Given that $g^\ast$ meets $\max(p(x), 1-p(x))$
+exactly at every reading $x$ (ties included): what does this establish
+about the inequality $P(g(X)=Y) \le E_X[\max(p(X),1-p(X))]$ -- is
+$E_X[\max(p(X),1-p(X))]$ merely \emph{a} valid upper bound, or is it the
+best possible (tight) one?
+
+\textbf{Answer given.} It can actually be reached.
+
+\begin{takeaway}
+Combining Section~5 ($P(g(X)=Y) \le E_X[\max(p(X),1-p(X))]$ for every
+classifier $g$) with Section~6 ($g^\ast$ achieves this value exactly)
+establishes that $E_X[\max(p(X),1-p(X))]$ is not merely a valid ceiling but
+the tight maximum: the largest accuracy any classifier can achieve, reached
+with equality by $g^\ast$. This general fact -- true for any binary
+classification problem with posterior $p(x)=P(Y=A\mid X=x)$, independent of
+any corruption or ambiguity model -- is the statement usually called
+\emph{Bayes-optimality of the MAP classifier}.
+\end{takeaway}
+
+\section{Part II: is the ``smudge'' provable in general?}
+
+Having finished the general Bayes-optimality result above, the discussion
+turned to a second, separate question raised by the PCA figure: must the
+gradient of points between the two target clusters (the ``smudge'') always
+be present, and can that be shown in a way that applies to any predictor,
+not just the specific MLP encoder from the experiment? The answer is yes,
+but it requires a shift in framing.
+
+\textbf{Key framing shift.} Everything proved in Part I concerns a
+\emph{discrete decision} $g(x)\in\{A,B\}$, scored by whether it is exactly
+right (0--1 loss / accuracy). ``Smudge'' only makes sense for a
+\emph{continuous-valued} output landing anywhere between two points --
+which is actually what the real encoder produces (a continuous vector,
+trained by minimizing \emph{squared error}, not by making a discrete
+decision). So Part II re-derives the analogous ``best possible output''
+fact, but for squared-error loss instead of 0--1 loss, using the same
+pointwise-optimize-then-average proof technique as Part I.
+
+\subsection{Warm-up: a single reading, squared-error loss}
+
+\textbf{Setup.} As in the very first warm-up, suppose at a specific reading
+$x$, the target $T$ equals $1$ (class $A$) with probability 70\%, and $0$
+(class $B$) with probability 30\%. This time, instead of guessing $A$ or
+$B$ to maximize the probability of being exactly right, the task is to pick
+a single real number $v$ minimizing the \emph{expected squared error}
+$E[(v-T)^2]$.
+
+\textbf{Question asked.} What value of $v$ minimizes $E[(v-T)^2]$, and does
+the old ``commit to the more likely outcome'' reasoning (which gave $v=1$
+in the classification version) still apply?
+
+\textbf{Answer given.} $v = 0.7$ -- described initially as ``70\% confident
+it's 1, because that's true 70\% of the time,'' then sharpened to: this is
+the \emph{expected value} of $T$, $E[T] = 1(0.7) + 0(0.3) = 0.7$, which is a
+different operation from ``pick the more likely single outcome'' (that
+would give $v=1$, not $0.7$).
+
+\textbf{Terminology reviewed.} The \emph{expectation} of a random variable
+$Z$ taking values $z_1, z_2, \ldots$ with probabilities $P(Z=z_1),
+P(Z=z_2),\ldots$ is $E[Z] = \sum_i z_i P(Z=z_i)$ -- the same operation used
+earlier for $E_X[\max(p(X),1-p(X))]$, now applied to $T$ instead of to a
+per-reading accuracy value.
+
+\begin{takeaway}
+For a single reading with a binary target $T$, the squared-error-minimizing
+output is $E[T]$, the probability-weighted average of $T$'s possible
+values -- \emph{not} $\max$ of the two probabilities as in the
+classification case. These are genuinely different optimization problems
+with genuinely different optimal answers.
+\end{takeaway}
+
+\subsection{General formula}
+
+\textbf{Question asked.} For a general reading $x$ where $T=1$ with
+probability $p(x)$ and $T=0$ with probability $1-p(x)$, write the general
+formula for the optimal $v$.
+
+\textbf{Answer given (general form).}
+\[
+  E[T] = t_1\, p(x) + t_0\,(1-p(x))
+\]
+
+\textbf{Specialized.} Substituting the actual values $t_1=1$, $t_0=0$:
+\[
+  v^\ast(x) = E[T] = p(x).
+\]
+
+\begin{takeaway}
+The squared-error-optimal output at reading $x$ is simply $p(x)$ itself --
+a strikingly simple formula, and one that is central to the smudge
+question (see the open question below).
+\end{takeaway}
+
+\section{When must the smudge appear?}
+
+\textbf{Question asked.} Given $v^\ast(x) = p(x)$: when does this equal one
+of the two ``pure'' target values ($0$ or $1$), and when is it forced to
+sit strictly between them?
+
+\textbf{Answer given.} If $p(x)$ is $1$ (or $0$), $v^\ast(x)$ would be $1$
+(or $0$). If $p(x)$ is between $0$ and $1$, $v^\ast(x)$ will be between
+them. So if there is any ambiguity, the optimal output must be smudged.
+
+\begin{takeaway}
+$v^\ast(x) \in \{0,1\}$ iff $p(x) \in \{0,1\}$ (no ambiguity); whenever
+$0<p(x)<1$, $v^\ast(x)$ is strictly between $0$ and $1$. The smudge is
+mathematically necessary exactly where genuine ambiguity exists.
+\end{takeaway}
+
+\section{Extending to the full one-hot vector}
+
+\textbf{Question asked.} With $T=e_A$ (probability $p(x)$) or $T=e_B$
+(probability $1-p(x)$), write $v^\ast(x)$ as a combination of $p(x)$,
+$e_A$, and $e_B$.
+
+\textbf{Answer given.}
+\[
+  v^\ast(x) = e_A\, p(x) + e_B\,(1-p(x)).
+\]
+
+\begin{takeaway}
+The vector-valued optimum is a convex combination of the two one-hot
+targets, i.e.\ a point on the line segment $[e_A, e_B]$, weighted by
+$p(x)$. Restricted to just the two coordinates corresponding to $A$ and
+$B$ (all others are always $0$, since $T$ never has mass there), this is
+$(p(x), 1-p(x))$ -- a point that coincides with an endpoint of the segment
+only when $p(x)\in\{0,1\}$, and otherwise sits strictly in its interior.
+\end{takeaway}
+
+\section{Formal statement}
+
+\begin{theorem}[Bayes-optimality of the MAP classifier]
+Let $X$ and $Y$ be jointly distributed random variables with $Y\in\{A,B\}$,
+and define $p(x) := P(Y=A\mid X=x)$. Then for every measurable function
+$g:\mathcal X \to \{A,B\}$,
+\[
+  P\big(g(X)=Y\big) \;\le\; \mathbb{E}_X\big[\max(p(X), 1-p(X))\big],
+\]
+and equality is attained by
+\[
+  g^\ast(x) = \begin{cases} A & \text{if } p(x) \ge 1-p(x) \\ B & \text{otherwise.} \end{cases}
+\]
+\end{theorem}
+
+\begin{proof}
+We prove the inequality first, then achievability.
+
+\textbf{The inequality.} Fix a measurable $g:\mathcal X\to\{A,B\}$ and a
+reading $x$. Since $g(x)$ is either $A$ or $B$, exactly one of two cases
+holds: if $g(x)=A$, then $g$ is correct at $x$ precisely when $Y=A$, giving
+$P(g(X)=Y\mid X=x)=p(x)$; if $g(x)=B$, correctness requires $Y=B$, giving
+$P(g(X)=Y\mid X=x)=1-p(x)$. In either case the correctness probability
+equals one of $p(x)$ or $1-p(x)$, so
+\[
+  P(g(X)=Y\mid X=x) \;\le\; \max(p(x), 1-p(x)).
+\]
+Taking expectations over $X$ and applying the law of total probability,
+$P(g(X)=Y) = \mathbb{E}_X[P(g(X)=Y\mid X)]$, gives
+\[
+  P(g(X)=Y) \;\le\; \mathbb{E}_X\big[\max(p(X), 1-p(X))\big].
+\]
+Since $g$ was an arbitrary measurable function, this holds for every
+classifier.
+
+\textbf{Achievability.} Define $g^\ast(x) = A$ if $p(x)\ge 1-p(x)$, and
+$g^\ast(x)=B$ otherwise -- i.e.\ $g^\ast$ always selects whichever of
+$p(x)$, $1-p(x)$ is larger. By the case analysis above, this means
+$P(g^\ast(X)=Y\mid X=x) = \max(p(x),1-p(x))$ for every $x$: not merely
+bounded by the per-reading ceiling, but equal to it. Taking expectations,
+\[
+  P(g^\ast(X)=Y) = \mathbb{E}_X\big[\max(p(X), 1-p(X))\big],
+\]
+so $g^\ast$ attains the bound with equality, and the inequality above is
+tight.
+\end{proof}
+
+\begin{theorem}[$L^2$-optimality of the conditional expectation]
+Let $T$ be a $\{e_A, e_B\}$-valued random vector ($e_A, e_B \in
+\mathbb{R}^n$ the one-hot targets) with $P(T=e_A\mid X=x) = p(x)$ and
+$P(T=e_B\mid X=x) = 1-p(x)$. Then, over all measurable $f:\mathcal X \to
+\mathbb{R}^n$, $\mathbb{E}\big[\|f(X)-T\|^2\big]$ is minimized (a.e.\
+uniquely) by
+\[
+  f^\ast(x) = \mathbb{E}[T\mid X=x] = p(x)\,e_A + (1-p(x))\,e_B.
+\]
+\end{theorem}
+
+\begin{proof}[Proof of Theorem 2]
+\textbf{Step 1: one fixed reading.} Fix a reading $x$ and a candidate output
+$v\in\mathbb{R}^n$. Given $X=x$, $T$ equals $e_A$ with probability $p(x)$ and
+$e_B$ with probability $1-p(x)$, so
+\[
+  \mathbb{E}\big[\|v-T\|^2 \mid X=x\big]
+  = p(x)\,\|v-e_A\|^2 + (1-p(x))\,\|v-e_B\|^2.
+\]
+Expand each term using $\|v-e\|^2 = \|v\|^2 - 2\,v\cdot e + \|e\|^2$, and
+write $m := p(x)\,e_A + (1-p(x))\,e_B$. The terms involving $v$ combine to
+\[
+  \mathbb{E}\big[\|v-T\|^2 \mid X=x\big] = \|v\|^2 - 2\,v\cdot m + C,
+  \qquad C := p(x)\|e_A\|^2 + (1-p(x))\|e_B\|^2,
+\]
+where $C$ does not depend on $v$. Completing the square, since
+$\|v-m\|^2 = \|v\|^2 - 2\,v\cdot m + \|m\|^2$,
+\[
+  \mathbb{E}\big[\|v-T\|^2 \mid X=x\big] = \|v-m\|^2 + \big(C - \|m\|^2\big).
+\]
+The second term does not depend on $v$, and the first is nonnegative and
+equals zero exactly when $v=m$. So $v=m=f^\ast(x)$ is the unique minimizer at
+this reading.
+
+(Scalar warm-up of the same algebra, with $T\in\{0,1\}$ and $p(x)=0.7$:
+$0.7(v-1)^2 + 0.3v^2 = (v-0.7)^2 + 0.21$, minimized at $v=0.7$, with
+unavoidable error $0.21$.)
+
+\textbf{Step 2: combine across readings.} By the law of total expectation,
+for any measurable $f$,
+\[
+  \mathbb{E}\big[\|f(X)-T\|^2\big]
+  = \mathbb{E}_X\Big[\mathbb{E}\big[\|f(X)-T\|^2 \mid X\big]\Big].
+\]
+By Step 1, for every reading $x$,
+\[
+  \mathbb{E}\big[\|f(x)-T\|^2 \mid X=x\big] \;\ge\;
+  \mathbb{E}\big[\|f^\ast(x)-T\|^2 \mid X=x\big].
+\]
+Since an average of terms that are each bounded below is bounded below by
+the average of those bounds, taking $\mathbb{E}_X$ gives
+\[
+  \mathbb{E}\big[\|f(X)-T\|^2\big] \;\ge\; \mathbb{E}\big[\|f^\ast(X)-T\|^2\big]
+\]
+for every measurable $f$, so $f^\ast$ minimizes the overall expected squared
+error.
+
+\textbf{Uniqueness.} Suppose some $f$ attains the same minimum. Define the
+per-reading gap
+\[
+  D(x) := \mathbb{E}\big[\|f(x)-T\|^2 \mid X=x\big]
+        - \mathbb{E}\big[\|f^\ast(x)-T\|^2 \mid X=x\big].
+\]
+By Step 1, $D(x)\ge 0$ for every $x$, and by assumption $\mathbb{E}_X[D(X)]=0$.
+A nonnegative quantity whose average is zero must equal zero except possibly
+on a set of readings of probability zero, so $D(x)=0$ for almost every $x$.
+By Step 1, the only $v$ that achieves the minimum at a reading $x$ is
+$m=f^\ast(x)$, so $f(x)=f^\ast(x)$ for almost every $x$. $\blacksquare$
+\end{proof}
+
+\begin{corollary}[Restricted to the two active coordinates]
+Writing $f^\ast_A, f^\ast_B$ for the coordinates of $f^\ast$ corresponding
+to $e_A, e_B$:
+\[
+  \big(f^\ast_A(x),\, f^\ast_B(x)\big) = \big(p(x),\, 1-p(x)\big) \in
+  \mathrm{conv}\{(1,0),(0,1)\},
+\]
+which equals an extreme point of that segment iff $p(x)\in\{0,1\}$, and
+lies in its relative interior whenever $0<p(x)<1$.
+\end{corollary}
+
+\begin{proof}[Proof of the Corollary]
+By Theorem~2, $f^\ast(x) = p(x)\,e_A + (1-p(x))\,e_B$, and $e_A, e_B$ have a
+$1$ in their own coordinate and $0$ in the other's, so the $A$ and $B$
+coordinates of $f^\ast(x)$ are $p(x)$ and $1-p(x)$. This point equals
+$(1,0)$ or $(0,1)$ exactly when $p(x)\in\{0,1\}$; for $0<p(x)<1$, both
+coordinates are strictly between $0$ and $1$, so the point lies in the
+interior of the segment.
+\end{proof}
+
+\begin{proposition}[Cost of not smudging]
+In the setting of Theorem~2, for every measurable $f$,
+\[
+  \mathbb{E}\big[\|f(X)-T\|^2\big]
+  = \mathbb{E}\big[\|f^\ast(X)-T\|^2\big]
+  + \mathbb{E}\big[\|f(X)-f^\ast(X)\|^2\big].
+\]
+Consequently, if $f(x)\neq f^\ast(x)$ on a set of readings of positive
+probability, then $\mathbb{E}\big[\|f(X)-T\|^2\big] >
+\mathbb{E}\big[\|f^\ast(X)-T\|^2\big]$. In particular, a predictor that
+outputs a pure corner at readings where $0<p(x)<1$ has strictly larger
+expected squared error than $f^\ast$.
+\end{proposition}
+
+\begin{proof}
+Fix a reading $x$. Step~1 of the proof of Theorem~2 gives, for any vector
+$v$,
+\[
+  \mathbb{E}\big[\|v-T\|^2 \mid X=x\big] = \|v-f^\ast(x)\|^2 + \big(C-\|f^\ast(x)\|^2\big),
+\]
+where the second term does not depend on $v$. Taking $v=f(x)$ and $v=f^\ast(x)$
+and subtracting,
+\[
+  \mathbb{E}\big[\|f(x)-T\|^2 \mid X=x\big] - \mathbb{E}\big[\|f^\ast(x)-T\|^2 \mid X=x\big]
+  = \|f(x)-f^\ast(x)\|^2.
+\]
+Replace $x$ by the random reading $X$ and average both sides with $\mathbb{E}_X$.
+By the law of total expectation,
+$\mathbb{E}_X\big[\mathbb{E}[\|g(X)-T\|^2 \mid X]\big] = \mathbb{E}\big[\|g(X)-T\|^2\big]$
+for $g=f$ and $g=f^\ast$, which gives
+\[
+  \mathbb{E}\big[\|f(X)-T\|^2\big] - \mathbb{E}\big[\|f^\ast(X)-T\|^2\big]
+  = \mathbb{E}\big[\|f(X)-f^\ast(X)\|^2\big],
+\]
+the claimed identity. The last term is an average of nonnegative numbers, so it
+is positive whenever $\|f(X)-f^\ast(X)\|^2>0$ on a set of positive
+probability. If $f$ outputs a pure corner where $0<p(x)<1$, then $f(x)$ differs
+from the strictly interior point $f^\ast(x)$ there, so $\|f(x)-f^\ast(x)\|^2>0$.
+\end{proof}
+
+\section{Empirical checks against the actual experiment}
+
+A few points that came up while inspecting the real saved encoder outputs
+(\texttt{mnist\_6\_8\_embeddings.pt}), relevant to the theorem above:
+
+\begin{itemize}
+  \item Restricting the PCA fit itself to dims 6 and 8, or better, plotting
+  those two dimensions directly with no PCA at all, reproduces the
+  corollary's geometry exactly: points fall almost exactly on the segment
+  between $(1,0)$ and $(0,1)$ (measured deviation from
+  $\text{dim}_6+\text{dim}_8=1$: mean $\approx 0$, max $0.024$ on train,
+  $0.063$ on test).
+  \item Points near the middle of that segment are not purely explained by
+  label corruption: among the most ambiguous train points, $37.5\%$ were
+  mislabeled versus a $19.8\%$ base rate -- corruption is overrepresented
+  there, as expected, but several genuinely clean, correctly-assigned
+  samples also land near the middle, reflecting ordinary visual ambiguity
+  in handwriting rather than the corruption mechanism.
+  \item The theorem's ``never exactly $0$ or $1$'' claim is about the true,
+  infinite-precision optimum. In the actual saved \texttt{float32} tensors,
+  thousands of entries are exactly $1.0$ (or $0.0$) -- a floating-point
+  rounding artifact (the true sigmoid output can be closer to $1$ than the
+  nearest representable float32 value other than $1.0$ itself), not a
+  contradiction of the theorem.
+  \item \textbf{Flipped-label test set} (same test images, the same $20\%$
+  corruption process as training; this matches the unreliable-sensor scenario,
+  where test data is as ambiguous as train data). Accuracy against the
+  flipped labels was $71.4\%$, below the $1-q = 79.97\%$ ceiling of
+  Theorem~1, as it must be. The model recovers the true digit on about
+  $84\%$ of images, and $0.84(0.8)+0.16(0.2)\approx 0.70$ predicts the
+  observed agreement. Mean squared error against the flipped targets was
+  $0.0538$. If every reading had $p(x)=0.8$ and the model output
+  $(0.8,0.2)$, the floor would be $2q(1-q)/10 = 0.032$; a predictor snapping
+  perfectly to the true digit's corner would score $0.04$. The difference,
+  $0.008 = \mathbb{E}\|f-f^\ast\|^2/10$, is the cost of not smudging from the
+  proposition above.
+\end{itemize}
+
+\section{Scope decision}
+
+The general results above are complete. Deriving the concrete $80\%$ ceiling
+from a specific swap-corruption model (computing $p(x)$ explicitly for the
+sensor scenario) was considered and deliberately dropped; the log stops at the
+general theorems.
+
+\end{document}
